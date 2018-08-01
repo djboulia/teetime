@@ -1,0 +1,101 @@
+package teetime.pages;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import teetime.CoursePreferences;
+import teetime.Session;
+import teetime.TimeSlot;
+
+import zero.util.net.FormRequest;
+import zero.util.net.HTTPClientRequest;
+import zero.util.net.HTTPClientSession;
+
+/**
+ * Manage page interactions for searching a given date for available tee times
+ * 
+ * @author djboulia
+ *
+ */
+public class Booking {
+	private String _path;
+	private String _viewState;
+	private String _lockJson;
+	
+    private static final Pattern patLockJson = Pattern.compile("\"userId\":\"(.*?)\",\"teetimeid\":\"(.*?)\",\"urlCurr\":\"(.*?)\",\"urlBack\":\"(.*?)\"");
+    
+	public Booking(String path) {
+		_path = path;
+	}
+	
+	public String getViewState() {
+		return _viewState;
+	}
+	
+	public String getLockJson() {
+		return _lockJson;
+	}
+	
+	public boolean send( HTTPClientSession session ) {
+
+		// load the bookings pages
+		HTTPClientRequest conn = session.newBasicRequest(_path);
+	    
+	    if (!conn.connect()) {
+	        System.err.println( "Error accessing the Prestonwood site" );
+	        return false;
+	    }
+
+	    String result = conn.getLastResult();
+	    System.out.println( result );	    
+
+	    try {
+		    _viewState = Session.parseViewState(result);
+		    
+		    _lockJson = parseLockJson(result);
+		    System.err.println(_lockJson);
+	    } catch( java.io.IOException e ) {
+	    	e.printStackTrace();
+	    }
+	    return true;
+	}
+
+	public static String parseLockJson(String data) throws java.io.IOException {
+		
+		// Request
+		//{"methodName": "ttBooking.GetJonasLock", "data": {"userId": "80062", "teetimeid": "8385788", "urlCurr": "/TeeTimes/Booking.aspx?timeid=8385788&teestate=true", "urlBack": "/TeeTimes/TeeSheet.aspx?filter=True"}}
+		// Response
+		
+	    // normalize all white space to make our regex search patterns work smoothly
+	    String str = data.replaceAll("\\s+", " ");
+	    
+	    System.err.println( " str = " + str );
+
+	    // find all input boxes
+	    Matcher mList = patLockJson.matcher(str);
+	    	    
+	    if (!mList.find())
+	    	return null;
+	        
+        if ( mList.groupCount() != 4) {
+            // some sort of parse error -- abort
+            System.err.println( "Unexpected format in results!" );
+            for (int i=0; i<=mList.groupCount(); i++) {
+                System.err.println( "group " + i + ": [" + mList.group(i) + "]" );
+            }
+            throw new java.io.IOException("Bad format");
+        }
+        
+//        System.err.println( "found userid -- " + mList.group(1) + "--" );
+        return "{\"methodName\": \"ttBooking.GetJonasLock\", \"data\": {\"userId\": \"" + mList.group(1) + "\", \"teetimeid\": \"" + mList.group(2) + "\", \"urlCurr\": \"" + mList.group(3) + "\", \"urlBack\": \"" + mList.group(4) + "\"}}";
+	}
+	
+	
+
+}

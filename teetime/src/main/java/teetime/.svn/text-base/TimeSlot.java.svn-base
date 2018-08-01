@@ -1,0 +1,85 @@
+package teetime;
+
+import java.util.Date;
+
+public class TimeSlot {
+	
+	private Date _time;
+	private String _id;
+	private String _filterId;
+	private int _course; // see CoursePreferences
+	private String _players[] = { "", "", "", "" };
+
+	public TimeSlot() {
+	}
+
+	public Date getTime() {
+		return _time;
+	}
+
+	public void setTime(Date time) {
+		this._time = time;
+	}
+
+	public String getId() {
+		return _id;
+	}
+
+	public void setId(String id) {
+		this._id = id;
+	}
+
+	public String getFilterId() {
+		return _filterId;
+	}
+
+	public void setFilterId(String id) {
+		this._filterId = id;
+	}
+
+	public int getCourse() {
+		return _course;
+	}
+
+	public void setCourse(int _course) {
+		this._course = _course;
+	}
+
+	public void setPlayer( int i, String str ) {
+		if (i<0 || i>3) throw new IllegalArgumentException("setPlayer index out of bounds!");
+		
+		_players[i] = str;
+	}
+	
+	/**
+	 * @param i player number 1, 2, 3, or 4
+	 * @return true if the position is available, false otherwise
+	 */
+	public boolean PlayerPositionAvailable( int i ) {
+		
+		if (i<1 || i>4) throw new IllegalArgumentException("Invalid parameter! Player position " + Integer.toString(i));
+		
+		if (_players[i-1].equalsIgnoreCase("available")) return true;
+		else return false;
+	}
+	
+	/**
+	 * Check if the time slot has any players in it
+	 * @return true if all four positions are available in this time slot, false otherwise
+	 */
+	public boolean isEmpty() {
+		for (int i=1; i<=_players.length; i++) {
+			if (!PlayerPositionAvailable( i )) 
+				return false;
+		}
+		return true;
+	}
+	
+	public String getPlayersAsString() {
+		return "[" + _players[0] + "|" + _players[1] + "|" + _players[2] + "|" + _players[3] + "]" ;
+	}
+
+	public String toString() {
+		return getTime() + " " + getId() + " " + getFilterId() + " " + CoursePreferences.toString(getCourse()) + " " + getPlayersAsString() ; 
+	}
+}

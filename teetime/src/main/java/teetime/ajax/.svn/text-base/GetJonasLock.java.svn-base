@@ -1,0 +1,61 @@
+package teetime.ajax;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import teetime.CoursePreferences;
+import teetime.TimeSlot;
+
+import zero.util.net.AjaxRequest;
+import zero.util.net.FormRequest;
+import zero.util.net.HTTPClientRequest;
+import zero.util.net.HTTPClientSession;
+
+/**
+ * Manage page interactions for locking a given tee time
+ * 
+ * @author djboulia
+ *
+ */
+public class GetJonasLock {
+	private String _path;
+	private String _json;
+	
+	private String _goodResult = "{\"d\":\"\"}";
+	
+    private static final Pattern patLockRedirect = Pattern.compile("\\\\\"methodparameters\\\\\":\\\\\"(.*?)(\\\\\"}\"})");
+
+	public GetJonasLock(String path, String json) {
+		_path = path;
+		_json = json;
+	}
+
+	public boolean send( HTTPClientSession session ) {
+
+    	// see if this time is available by requesting the lock
+    	AjaxRequest form = session.newAjaxRequest( _path);
+    	form.setJson( _json );
+    	
+    	boolean success = form.connect();
+    	if (!success) {
+	        System.err.println( "Error requesting lock." );
+	        return false;
+    	}
+
+    	String result = form.getLastResult();
+//	    System.out.println( result );
+    	if (!result.startsWith(_goodResult)) {
+    		System.err.println("Didn't obtain lock. Result ->" + result);
+    		return false;
+    	}
+    	
+    	return true;
+	}
+			
+}

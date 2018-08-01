@@ -1,0 +1,287 @@
+package zero.util.net;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.IOException;
+
+import java.net.HttpURLConnection;
+
+import java.util.Map;
+import java.util.List;
+import java.util.Iterator;
+import java.util.logging.Logger;
+
+public class HTTPClientRequest {
+	
+	public static final int METHOD_GET = 1;
+	public static final int METHOD_POST = 2;
+	
+	private HTTPClientSession session = null;
+	private String url = "";
+	private int method = METHOD_GET;
+	private String strLastResult = "";
+	private int responseCode = 200;
+	private String strReferer = "";
+	private String strHeaders="";
+	
+	/**
+	 * HTTPClientRequest
+	 *
+	 * @param session the parent session object associated with this request
+	 * @param path the path relative to the base url in the session object
+	 *
+	 */
+	protected HTTPClientRequest( HTTPClientSession session, String path ) {
+		this.session = session;
+		
+		if (!path.startsWith( "/" )) path = "/" + path;
+		
+		this.url = session.getBaseUrl() + path;
+	}
+
+    private static final Logger getLogger() {
+    	Logger log = Logger.getLogger("zero.util.net"); 
+    	return log;
+    }
+
+	public String getUrl() {
+		return url;
+	}
+	
+	public int getMethod() {
+		return method ;
+	}
+	
+	public void setMethod( int method ) {
+		if (method != METHOD_POST && method != METHOD_GET) 
+			throw new IllegalArgumentException("HTTPClientRequest.setMethod: bad method"); 
+		this.method = method;
+	}
+
+	public String getContentType( ) {
+		return "" ;
+	}
+
+	public void setReferer( String str ) {
+		strReferer = str;
+		getLogger().fine( strReferer );
+	}
+	
+	public String getReferer() {
+		return strReferer;
+	}
+	
+	public int getResponseCode() {
+		return responseCode;
+	}
+		
+	public String getLastResult() {
+		return strLastResult;
+	}
+	
+	private void storeLastResult( HttpURLConnection conn ) throws IOException {
+		responseCode = conn.getResponseCode();
+			
+       	// Get the response
+		BufferedReader rd = null;			
+       	rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+       
+		String line;
+		StringBuilder strResult = new StringBuilder("");
+    	while ((line = rd.readLine()) != null) {
+    		strResult.append( line );
+    		strResult.append( "\n" );
+	   	 }
+    	strLastResult = strResult.toString();
+	}
+	
+	/**
+	 * getDecoratedUrl
+	 *
+	 * an opportunity to mangle the URL sent to the server.  For GET requests this would be
+	 * where query parameters are added to the URL before making the request.  Default implementation
+	 * just returns the URL
+	 *
+	 */
+	public String getDecoratedUrl() {
+		return getUrl();
+	}
+	
+	/**
+	 * writePostData
+	 *
+	 * gives subclasses an opportunity to control the output written
+	 * on POST requests.  The default implementatin does nothing.
+	 *
+	 * @param os the output stream for this connection. Any content written here goes as the body of request
+	 *
+	 */
+	protected void writePostData( OutputStream os ) {
+	}
+
+	private void storeHeaderFields( HttpURLConnection conn ) {
+		strHeaders = "";
+		
+		Map fields = conn.getHeaderFields();
+		for (Iterator itset = fields.keySet().iterator(); itset.hasNext(); ) {
+			String key = (String)itset.next();
+			List field = (List)fields.get(key);
+			
+			for (Iterator it=field.iterator(); it.hasNext(); ) {
+				String hdrItem = (String)it.next();
+
+				/* ignore 'null' entry since this is not really a key/val header
+				 * it contains the HTTP response string, e.g. 'HTTP/1.1 200 OK' 
+				 */
+				if (key != null) {
+					strHeaders = strHeaders + key + ": " + hdrItem + "\n";
+				}
+			}
+		}
+		
+		getLogger().fine( "headers=" + strHeaders);
+	}
+	
+	public String getStoredHeaders() {
+		return strHeaders;
+	}
+	
+		
+	protected void setHeaderFields( HttpURLConnection conn ) {
+		if (getReferer().length() > 0) {
+			conn.setRequestProperty("Referer", getReferer());
+		}
+		
+		String strContentType = getContentType();
+		if (strContentType.length() > 0) {
+			conn.setRequestProperty("Content-type", strContentType);
+		}
+	}
+	
+	/**
+	 * makes the HTTP request, storing the results in strLastResult
+	 * 
+	 * @param strUrl - the url to request
+	 * @return true if successful, false if an error occurred
+	 */
+	public boolean connect( ) {
+		boolean bResult = false;
+
+		try {	        
+			
+			String url = getDecoratedUrl();
+			
+			HttpURLConnection conn = session.getConnection(url);
+			
+			setHeaderFields( conn );
+
+			if (getMethod() == METHOD_POST) {
+				conn.setDoOutput(true);
+
+				writePostData( conn.getOutputStream() );			
+			}
+						
+			conn.connect();
+			
+			if (session.getSaveHeaders()) {
+				storeHeaderFields(conn);
+			}
+			
+			session.postProcessConnection( conn );
+			
+			storeLastResult(conn);
+	        		    	
+	    	bResult = true;
+		} catch(Exception e) {
+			strLastResult = "";
+			e.printStackTrace();
+		}
+	      	
+		return bResult;
+	}	
+	
+	/**
+	 * helper to urlencode parameter strings
+	 **/
+	public static String urlencode( String str ) {
+		String strReturn = "";
+		
+		try {
+			strReturn = java.net.URLEncoder.encode(str, "UTF-8");
+			getLogger().fine( "urlencode(\"" + str + "\") returning " + strReturn);
+		} catch( Exception e ) {
+			e.printStackTrace();
+		}
+		
+		return strReturn;
+
+	}
+
+	/** 
+	 * helper to print a resulting HTML string with the html chars escaped
+	 **/
+	public static final String escapeHTML(String s){
+	   StringBuffer sb = new StringBuffer();
+	   int n = s.length();
+	   for (int i = 0; i < n; i++) {
+	      char c = s.charAt(i);
+	      switch (c) {
+	         case '<': sb.append("&lt;"); break;
+	         case '>': sb.append("&gt;"); break;
+	         case '&': sb.append("&amp;"); break;
+	         case '"': sb.append("&quot;"); break;
+	         case 'à': sb.append("&agrave;");break;
+	         case 'À': sb.append("&Agrave;");break;
+	         case 'â': sb.append("&acirc;");break;
+	         case 'Â': sb.append("&Acirc;");break;
+	         case 'ä': sb.append("&auml;");break;
+	         case 'Ä': sb.append("&Auml;");break;
+	         case 'å': sb.append("&aring;");break;
+	         case 'Å': sb.append("&Aring;");break;
+	         case 'æ': sb.append("&aelig;");break;
+	         case 'Æ': sb.append("&AElig;");break;
+	         case 'ç': sb.append("&ccedil;");break;
+	         case 'Ç': sb.append("&Ccedil;");break;
+	         case 'é': sb.append("&eacute;");break;
+	         case 'É': sb.append("&Eacute;");break;
+	         case 'è': sb.append("&egrave;");break;
+	         case 'È': sb.append("&Egrave;");break;
+	         case 'ê': sb.append("&ecirc;");break;
+	         case 'Ê': sb.append("&Ecirc;");break;
+	         case 'ë': sb.append("&euml;");break;
+	         case 'Ë': sb.append("&Euml;");break;
+	         case 'ï': sb.append("&iuml;");break;
+	         case 'Ï': sb.append("&Iuml;");break;
+	         case 'ô': sb.append("&ocirc;");break;
+	         case 'Ô': sb.append("&Ocirc;");break;
+	         case 'ö': sb.append("&ouml;");break;
+	         case 'Ö': sb.append("&Ouml;");break;
+	         case 'ø': sb.append("&oslash;");break;
+	         case 'Ø': sb.append("&Oslash;");break;
+	         case 'ß': sb.append("&szlig;");break;
+	         case 'ù': sb.append("&ugrave;");break;
+	         case 'Ù': sb.append("&Ugrave;");break;         
+	         case 'û': sb.append("&ucirc;");break;         
+	         case 'Û': sb.append("&Ucirc;");break;
+	         case 'ü': sb.append("&uuml;");break;
+	         case 'Ü': sb.append("&Uuml;");break;
+	         case '®': sb.append("&reg;");break;         
+	         case '©': sb.append("&copy;");break;   
+	         case '€': sb.append("&euro;"); break;
+	         
+	         // be careful with this one (non-breaking white space)
+	         case ' ': sb.append("&nbsp;");break;         
+	         
+	         default:  sb.append(c); break;
+	      }
+	   }
+	   return sb.toString();
+	}
+	
+	public String toString() {
+		return "HTTPClientRequest(url=" + this.getUrl() + ")";
+	}
+	
+}
+

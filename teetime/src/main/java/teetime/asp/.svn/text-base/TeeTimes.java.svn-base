@@ -1,0 +1,251 @@
+package teetime.pages;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import teetime.CoursePreferences;
+import teetime.TimeSlot;
+
+import zero.util.net.FormRequest;
+import zero.util.net.HTTPClientRequest;
+import zero.util.net.HTTPClientSession;
+
+/**
+ * Manage page interactions for searching a given date for available tee times
+ * 
+ * @author djboulia
+ *
+ */
+public class TeeTimes {
+	private String _path;
+	private Date _time;
+	private String _viewState;
+	private ArrayList<TimeSlot> _availableTimes;
+	
+    private static final Pattern patTimeList = Pattern.compile("<tr class=\"Available\"> (.*?)(</tr>)");
+    private static final Pattern patTime = Pattern.compile("&quot;teetimeid&quot;:(.*?),&quot;FilterQuery&quot;:(.*?)}(.*?)<div class=\"ButtonContent\"> (.*?) </div>(.*?)<span id=\"plc_lt_contentmain_pageplaceholder_pageplaceholder_lt_holder_holder_lt_ttTeeSheet_ttSheet_grid_ctl[0-9][0-9][0-9]?_lblCourse\">(.*?)</span>");
+    private static final Pattern patPlayers = Pattern.compile("<td class=\"TT4Play\">(.*?)(</td>)");
+    
+
+	public TeeTimes(String path, Date theTime) {
+		_path = path;
+		_time = theTime;
+	}
+
+	public String getViewState() {
+		return _viewState;
+	}
+
+	public void setViewState( String viewState ) {
+		_viewState = viewState;
+	}
+	
+	public Date getTime() {
+		return _time;
+	}
+	
+	/**
+	 * Available tee times are defined as those with at least one time
+	 * slot still open.  If you need a foursome, you will need to check
+	 * that all four slots are really available.  Use the TimeSlot.isEmpty()
+	 * function to determine if all positions in the timeslot are available.
+	 * 
+	 * @return a list of time slots with at least one position available
+	 */
+	public ArrayList<TimeSlot> getAvailableTimes() {
+		return _availableTimes;
+	}
+
+	public boolean send( HTTPClientSession session ) {
+
+		// load the tee times page
+		HTTPClientRequest conn = session.newBasicRequest(_path);
+	    
+	    if (!conn.connect()) {
+	        System.err.println( "Error accessing the Prestonwood site" );
+	        return false;
+	    }
+
+	    // read in the page data; need to establish state with the server so that we can
+	    // then issue a request to search for available tee times.  For the most part, 
+	    // we only do this first request to get at the "viewstate" data returned to us
+	    // we parse that with parseViewState below
+	    String result = conn.getLastResult();
+//	    System.out.println( result );
+	    
+	    try {
+
+            // "2011|7|28"
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy|M|dd");
+            String selDate = formatter.format(getTime());
+            
+            // "2011|7"
+            formatter = new SimpleDateFormat("yyyy|M");
+            String monthView = formatter.format(getTime());
+            
+            // "7/28/2011"
+            formatter = new SimpleDateFormat("M/dd/yyyy");
+            String filterDate = formatter.format(getTime());;
+            
+            _viewState = teetime.Session.parseViewState(result);
+
+	    	// this actually issues the request to search for tee times on a given date
+	    	FormRequest form = session.newFormRequest( HTTPClientRequest.METHOD_POST, _path);
+	    	form.addParameter("__EVENTTARGET", "plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttFilter$btnFind");
+	    	form.addParameter("__EVENTARGUMENT", "");
+	    	form.addParameter("__VIEWSTATE", _viewState);
+	    	form.addParameter("lng", "en-US");
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttFilter$desDate_PU_PN_SelDate", selDate);
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttFilter$desDate_PU_PN_MonthView", monthView);
+			form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttDateSelector$desCalendar_PN_MYP_PN_Month", "0");
+			form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttDateSelector$desCalendar_PN_MYP_PN_Year", "0");
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttDateSelector$desCalendar_PN_SelDate", "");	
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttDateSelector$desCalendar_PN_MonthView", monthView);
+	    	form.addParameter("plc_lt_contentmain_pageplaceholder_pageplaceholder_lt_holder_holder_lt_ttTeeSheet_menuNavigation_SelectedTab", "0");
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttDateSelector$desCalendar_Value", "");
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttFilter$hiddenCompanyId", "244");
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttFilter$desDate", filterDate);
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttFilter$rblDayTime", "0");
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttFilter$cbAvailable", "on");
+    		form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttFilter$cblCourse$0", "on");
+    		form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttFilter$cblCourse$1", "on");
+    		form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$holder$holder$lt$ttTeeSheet$ttFilter$cblCourse$2", "on");
+	    		    	
+	    	boolean success = form.connect();
+	    	if (!success) {
+		        System.err.println( "Error searching for tee times" );
+		        return false;
+	    	}
+	
+	    	result = form.getLastResult();
+	    	_availableTimes = parseTimes(result, _time);
+//	    	System.err.println( _availableTimes );
+	    	
+//		    System.out.println( result );
+	    } catch (java.io.IOException ioe ) {
+	    	ioe.printStackTrace();
+	    }
+
+	    return true;
+	}
+	
+	public static ArrayList<TimeSlot> parseTimes(String data, Date theDate) throws java.io.IOException {
+		
+		ArrayList<TimeSlot> list = new ArrayList<TimeSlot>();
+
+	    // normalize all white space to make our regex search patterns work smoothly
+	    String str = data.replaceAll("\\s+", " ");
+	    
+	    System.err.println( " str = " + str );
+
+	    // find all input boxes
+	    Matcher matcher = patTimeList.matcher(str);
+	    	    
+	    while (matcher.find()) {
+	        
+	        if ( matcher.groupCount() != 2) {
+	            // some sort of parse error -- abort
+	            System.err.println( "Unexpected format in results!" );
+	            for (int i=0; i<=matcher.groupCount(); i++) {
+	                System.err.println( "group " + i + ": [" + matcher.group(i) + "]" );
+	            }
+	            throw new java.io.IOException("Bad format");
+	        }
+	        
+//	        System.err.println( "found time -- " + mBugList.group(1) + "--" );
+	        TimeSlot ts = parseTime( matcher.group(1), theDate);	
+	        list.add( ts );
+	    }
+	        
+	    return list;
+	}
+	
+	public static TimeSlot parseTime(String data, Date theDate) throws java.io.IOException {
+
+		// <td class="TT4Select"> <a onclick="typeof($Lock)=='object'?$Lock.RequestLock({&quot;teetimeid&quot;:8243501,&quot;FilterQuery&quot;:4}):void(0);" 
+		// class="TT4Button w80 teetime-Available" signature="popupselector" href="javascript:void(0)"><div class="ButtonLeft"> <div class="ButtonContent"> 8:50 AM </div> 
+		// </div></a> </td><td class="TT4Course"> <span id="plc_lt_contentmain_pageplaceholder_pageplaceholder_lt_holder_holder_lt_ttTeeSheet_ttSheet_grid_ctl02_lblCourse">Meadows</span> </td><td class="TT4Play">Steven Weitzman</td><td class="TT4Play">Susan Weitzman</td><td class="TT4Play">Sheila Routh</td><td class="TT4Play">Available</td><td class="TT4Quick"> <a signature="popupselector" onmouseover="new $PopupSelector(this,{&quot;parameters&quot;:{&quot;teetimeid&quot;:8243501},&quot;method&quot;:&quot;ttSheet.GetQuickBookOptions&quot;,&quot;onSelect&quot;:doSelectBookOptions});" href="javascript:void(0)">Quick Book</a>
+
+		TimeSlot ts = new TimeSlot();
+		
+	    // normalize all white space to make our regex search patterns work smoothly
+		String str = data.replaceAll("\\s+", " ");
+	    
+//	    System.err.println( " str = " + str );
+
+	    // find all tee time data
+	    Matcher mTimes = patTime.matcher(str);
+	    	    
+	    if (!mTimes.find()) {
+	    	System.err.println("Invalid format for parseTime: str = " + str);
+	    	System.err.println("--> regex : " + patTime.pattern());
+	    	return null;
+	    }
+	        
+        if ( mTimes.groupCount() != 6) {
+            // some sort of parse error -- abort
+            System.err.println( "Unexpected format in results!" );
+            for (int i=0; i<=mTimes.groupCount(); i++) {
+                System.err.println( "group " + i + ": [" + mTimes.group(i) + "]" );
+            }
+            throw new java.io.IOException("Bad format");
+        }
+        
+//        System.err.println( "found teetime -- " + mTimes.group(1) + ", " + mTimes.group(2) + ", " + mTimes.group(4) + ", " + mTimes.group(6) + "--" );
+
+        ts.setId( mTimes.group(1));
+        ts.setFilterId( mTimes.group(2));
+        ts.setCourse( CoursePreferences.findCourseByName(mTimes.group(6)));
+        
+        DateFormat formatter = new SimpleDateFormat("MM/dd/yyyy h:mm a");
+        try {
+            // the parsed info only has the current time... but we know the date we requested in the
+            // search, so use that to build a complete date and time
+            Calendar gcalendar = new GregorianCalendar(); 
+            gcalendar.setTime(theDate);
+            
+            int month = gcalendar.get(Calendar.MONTH) + 1; // month val returned is zero based
+            
+            String strDate = month + "/" + 
+            				 gcalendar.get(Calendar.DAY_OF_MONTH) + "/" + 
+            				 gcalendar.get(Calendar.YEAR) + " " + 
+            				 mTimes.group(4);
+            
+        	Date teeTime = (Date)formatter.parse(strDate);
+            ts.setTime(teeTime);
+        } catch (Exception e) {
+        	System.err.println("Failed to parse tee time date.");
+        }
+        
+	        	        	        
+	    // find names of all the players in the foursome
+	    Matcher mNames = patPlayers.matcher(str);
+	    	    
+	    int names=0;
+	    while ( mNames.find() && names<4 ) {
+	        
+	        if ( mNames.groupCount() != 2) {
+	            // some sort of parse error -- abort
+	            System.err.println( "Unexpected format in results!" );
+	            for (int i=0; i<=mNames.groupCount(); i++) {
+	                System.err.println( "group " + i + ": [" + mNames.group(i) + "]" );
+	            }
+	            throw new java.io.IOException("Bad format");
+	        }
+//	        System.err.println( "found player -- " + mNames.group(1) + "--" );
+
+	        ts.setPlayer(names,  mNames.group(1));
+	        
+	        names++;
+	    }
+	    	        
+	    System.err.println( ts );
+	    return ts;
+	}
+}

@@ -1,0 +1,123 @@
+package teetime.ajax;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import teetime.CoursePreferences;
+import teetime.TimeSlot;
+
+import zero.util.net.AjaxRequest;
+import zero.util.net.FormRequest;
+import zero.util.net.HTTPClientRequest;
+import zero.util.net.HTTPClientSession;
+
+/**
+ * Manage page interactions for locking a given tee time
+ * 
+ * @author djboulia
+ *
+ */
+public class RequestLock {
+	private String _path;
+	private TimeSlot _teetime;
+	private String _viewState;
+	private String _redirectPath;
+	
+    private static final Pattern patLockRedirect = Pattern.compile("\\\\\"methodparameters\\\\\":\\\\\"(.*?)(\\\\\"}\"})");
+
+	public RequestLock(String path, TimeSlot teetime) {
+		_path = path;
+		_teetime = teetime;
+	}
+
+	public String getViewState() {
+		return _viewState;
+	}
+
+	public void setViewState( String viewState ) {
+		_viewState = viewState;
+	}
+	
+	public TimeSlot getTimeSlot() {
+		return _teetime;
+	}
+	
+	public String getRedirectPath() {
+		return _redirectPath;
+	}
+	
+
+	public boolean send( HTTPClientSession session ) {
+
+    	// see if this time is available by requesting the lock
+    	AjaxRequest form = session.newAjaxRequest( _path);
+    	form.setJson( "{\"methodName\": \"ttSheet.RequestLock\", \"data\": {\"teetimeid\": " + getTimeSlot().getId() + ", \"FilterQuery\": " + getTimeSlot().getFilterId() + "}}" );
+    	
+    	boolean success = form.connect();
+    	if (!success) {
+	        System.err.println( "Error requesting lock." );
+	        return false;
+    	}
+
+    	String result = form.getLastResult();
+//	    System.out.println( result );
+
+    	try {
+		    _redirectPath = parseRedirect( result );
+		    if (_redirectPath == null) {
+		    	System.err.println( "Didn't obtain lock! Response was --> " + result);
+		    	return false;
+		    }		    
+    	} catch( java.io.IOException e ) {
+    		e.printStackTrace();
+    	}
+
+	    return true;
+	}
+	
+	/**
+	 * @param data the response string to parse 
+	 * @return the redirect path if successful, null otherwise
+	 * @throws java.io.IOException
+	 */
+	public static String parseRedirect(String data) throws java.io.IOException {
+		
+		// Request
+		// {"methodName": "ttSheet.RequestLock", "data": {"teetimeid": 8385822, "FilterQuery": 8}}
+		// Response
+		//{"d":"{\"method\":\"Redirect\",\"methodparameters\":\"Booking.aspx?timeid=8385663&teestate=true\"}"}
+		
+	    // normalize all white space to make our regex search patterns work smoothly
+	    String str = data.replaceAll("\\s+", " ");
+	    
+	    System.err.println( " str = " + str );
+
+	    // find all input boxes
+	    Matcher mList = patLockRedirect.matcher(str);
+	    	    
+	    while (mList.find()) {
+	        
+	        if ( mList.groupCount() != 2) {
+	            // some sort of parse error -- abort
+	            System.err.println( "Unexpected format in results!" );
+	            for (int i=0; i<=mList.groupCount(); i++) {
+	                System.err.println( "group " + i + ": [" + mList.group(i) + "]" );
+	            }
+	            throw new java.io.IOException("Bad format");
+	        }
+	        
+	        System.err.println( "found redirect -- " + mList.group(1) + "--" );
+	        return mList.group(1);
+	    }
+	        
+	    return null;
+	}
+	
+		
+}

@@ -1,0 +1,191 @@
+package teetime;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import zero.util.net.HTTPClientSession;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class Session {
+
+
+	private static final String PATH_LOGIN = "/Login.aspx";
+	private static final String PATH_SEARCH = "/TeeTimes/TeeSheet.aspx";
+	private static final String PATH_BOOK = "/TeeTimes/TeeSheet.aspx";
+	private static final String PATH_REQUESTLOCK = "/CMSPages/PortalTemplate.aspx/AjaxMethod";
+
+	private boolean _loggedIn = false;
+	private String _site;
+	private CoursePreferences _prefs;
+	private String _viewState;
+	
+	private HTTPClientSession _HTTPSession;
+	
+	public Session( String site ) {		
+    	Logger log = Logger.getLogger("zero.util.net");
+    	log.setLevel( Level.OFF );
+
+		_site = site;
+		_HTTPSession = new HTTPClientSession( site );
+		_HTTPSession.setSaveCookies( true );
+		_HTTPSession.setSaveHeaders( true );
+		
+		// strip trailing slash if present
+		if (_site.endsWith("/")) _site = _site.substring(0, _site.length()-1);
+	}
+
+	private HTTPClientSession getHTTPSession() {
+		return _HTTPSession;
+	}
+	
+	public boolean login( String userid, String password ) {
+
+	    teetime.pages.Login page = new teetime.pages.Login( PATH_LOGIN, userid, password );
+	    boolean result = page.send(getHTTPSession());
+	    if (result) {		    
+		    // remember the state variable for subsequent calls
+		    _viewState = page.getViewState();
+		    _loggedIn = true;
+	    }
+	    return result;
+	}
+	
+	public void setCoursePreferences( CoursePreferences prefs ) {
+		_prefs = prefs;	
+	}
+	
+	public TimeSlot reserve( Date theTime ) {
+		if (!_loggedIn) { System.err.println("Session.reserve: Log in first!"); return null; }
+		
+	    // have to revert to http vs. https at this point; the site redirects to http after a successful login
+		// and the built in HTTPConnection doesn't seem to follow the redirect with the switch in protocol
+	    getHTTPSession().setBaseUrl( "http://prestonwood.com") ;
+
+	    teetime.pages.TeeTimes page = new teetime.pages.TeeTimes( PATH_SEARCH, theTime );
+	    page.setViewState( _viewState );
+	    if ( page.send(getHTTPSession()) ) {
+	    	
+	    	_viewState = page.getViewState();
+	    	
+	    	ArrayList<TimeSlot> list = page.getAvailableTimes();
+	    	
+	    	filter(list, theTime, _prefs);
+	    	
+	    	Iterator<TimeSlot> it = list.iterator();
+	    	while (it.hasNext()) {
+	    		TimeSlot ts = it.next();
+	    		if (ts.isEmpty()) {
+	    			System.out.println( "Empty TimeSlot " + ts);
+	    			
+	    			if (getTimeSlot( ts )) {
+	    				System.out.println("Reserved time slot " + ts);
+	    		    	return ts;
+	    			}
+	    		}
+	    	}
+	    	
+	    }
+	    return null;
+	}
+
+	/**
+	 * Pare down the list based on time and course preferences
+	 * 
+	 * @param list the list of available tee times
+	 * @param theTime the preferred start time; times prior to this will be filtered out
+	 * @param prefs current preferences for courses
+	 */
+	private void filter( ArrayList<TimeSlot> list, Date theTime, CoursePreferences prefs) {
+    	Iterator<TimeSlot> it = list.iterator();
+    	while (it.hasNext()) {
+    		TimeSlot ts = it.next();
+    		
+    		if (ts.getTime().before( theTime )) {
+    			it.remove();
+    		} else if (!prefs.isCoursePreferred(ts.getCourse())) {
+    			it.remove();
+    		}
+    	}
+	}
+	
+	private boolean getTimeSlot( TimeSlot ts ) {
+		if (!_loggedIn) { System.err.println("Session.getTimeSlot: Log in first!"); return false; }
+		
+	    // have to revert to http vs. https at this point; the site redirects to http after a successful login
+		// and the built in HTTPConnection doesn't seem to follow the redirect with the switch in protocol
+	    getHTTPSession().setBaseUrl( "http://prestonwood.com") ;
+
+	    // first request a lock on the available tee time.  this could fail, in which case we return 
+	    // false from the send() call.  this could happen when another user has accessed the page
+	    // and locked the tee time before we did
+	    teetime.ajax.RequestLock page = new teetime.ajax.RequestLock( PATH_REQUESTLOCK, ts );
+	    page.setViewState( _viewState );
+	    if ( page.send(getHTTPSession()) ) {
+	    	
+	    	// a successful lock of the tee time will return us a page for actually booking
+	    	// the time.  follow that redirect to finish booking
+		    String redirectPath = "/TeeTimes/" + page.getRedirectPath();
+		    
+		    teetime.pages.Booking pageBooking = new teetime.pages.Booking( redirectPath );
+		    if (pageBooking.send( getHTTPSession() )) {
+			    _viewState = pageBooking.getViewState();
+		    	
+			    // obtain the lock via Ajax call
+			    teetime.ajax.GetJonasLock ajaxLock = new teetime.ajax.GetJonasLock(PATH_REQUESTLOCK, pageBooking.getLockJson());			    
+			    if (ajaxLock.send(getHTTPSession())) {
+				    // book the tee time?			    	
+			    }
+		    	
+			    return true;
+		    }		    
+	    }
+
+	    return false;
+	}
+	
+	public void logout( ) {
+		if (_loggedIn) {
+			// TODO: implement me!
+			
+			_loggedIn = false;
+		}
+	}
+
+    private static final Pattern patViewState = Pattern.compile("<input type=\"hidden\" name=\"__VIEWSTATE\" id=\"__VIEWSTATE\" value=\"(.*?)(\" />)");
+
+	public static String parseViewState(String data) throws java.io.IOException {
+		String viewState = "";
+
+	    // normalize all white space to make our regex search patterns work smoothly
+	    String str = data.replaceAll("\\s+", " ");
+	    
+	    System.err.println( " str = " + str );
+
+	    // find all input boxes
+	    Matcher matcher = patViewState.matcher(str);
+	    	    
+	    while (matcher.find()) {
+	        
+	        if ( matcher.groupCount() != 2) {
+	            // some sort of parse error -- abort
+	            System.err.println( "Unexpected format in results!" );
+	            for (int i=0; i<=matcher.groupCount(); i++) {
+	                System.err.println( "group " + i + ": [" + matcher.group(i) + "]" );
+	            }
+	            throw new java.io.IOException("Bad format");
+	        }
+	        
+	        System.err.println( "found field -- " + matcher.group(1) + "--" );
+	        viewState = matcher.group(1);
+	        	        
+	    }
+	        
+	    return viewState;
+	}
+
+}

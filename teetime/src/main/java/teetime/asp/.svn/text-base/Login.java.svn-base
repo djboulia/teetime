@@ -1,0 +1,76 @@
+package teetime.pages;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import zero.util.net.FormRequest;
+import zero.util.net.HTTPClientRequest;
+import zero.util.net.HTTPClientSession;
+
+public class Login {
+	
+	private String _path;
+	private String _userid;
+	private String _password;
+	private String _viewState;
+	
+    private static final Pattern patInput = Pattern.compile("<input (.*?)(/>)");
+
+	public Login(String path, String userid, String password) {
+		_path = path;
+		_userid = userid;
+		_password = password;
+	}
+	
+	public String getViewState() {
+		return _viewState;
+	}
+
+	public boolean send(HTTPClientSession session) {
+		HTTPClientRequest conn = session.newBasicRequest(_path);
+	    
+	    if (!conn.connect()) {
+	        System.err.println( "Error accessing the Prestonwood site" );
+	        return false;
+	    }
+
+	    // read in the page data
+	    String result = conn.getLastResult();
+//	    System.out.println( result );
+
+	    try {
+	    	_viewState = teetime.Session.parseViewState(result);
+
+	    	FormRequest form = session.newFormRequest( HTTPClientRequest.METHOD_POST, _path);
+	    	form.addParameter("__EVENTTARGET", "");
+	    	form.addParameter("__EVENTARGUMENT", "");
+	    	form.addParameter("__VIEWSTATE", _viewState);
+	    	form.addParameter("lng", "en-US");
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$zoneRight$CHOLogin$Login1$UserName", _userid);
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$zoneRight$CHOLogin$Login1$Password", _password);
+	    	form.addParameter("plc$lt$contentmain$pageplaceholder$pageplaceholder$lt$zoneRight$CHOLogin$Login1$LoginButton", "Log on");
+	    	
+	    	boolean success = form.connect();
+	    	if (!success || !validLogin(form)) {
+		        System.err.println( "Error logging in to Prestonwood" );
+		        return false;
+	    	}
+
+	    	result = form.getLastResult();
+		    System.out.println( result );
+	    } catch (java.io.IOException ioe ) {
+	    	ioe.printStackTrace();
+	    }
+	    
+	    return true;
+	}
+	
+	private boolean validLogin( FormRequest form ) {
+		// we don't get a page back that says "you've logged in", so we look for no content 
+		// returned and a Location: redirect as confirmation that we've logged in
+		String strHeaders = form.getStoredHeaders();
+		return (strHeaders.indexOf("Content-Length: 0") >=0 && strHeaders.indexOf("Location: ") >=0 );
+	}
+
+
+}
