@@ -1,3 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<session version="1.0">&#x0A;<refactoring comment="Delete resource &apos;_pasted_code_&apos;" deleteContents="false" description="Delete resource &apos;_pasted_code_&apos;" element1="/_pasted_code_" flags="7" id="org.eclipse.ltk.core.refactoring.delete.resources" resources="1" stamp="1504032276858"/>&#x0A;<refactoring comment="Rename Java project &apos;TeeTime&apos; to &apos;WebScraper&apos;&#x0A;- Original element: &apos;TeeTime&apos;&#x0A;- Renamed element: &apos;TeeTime&apos;&#x0A;- Update references to refactored element" description="Rename Java project &apos;TeeTime&apos;" flags="7" id="org.eclipse.jdt.ui.rename.java.project" input="=TeeTime" name="WebScraper" references="true" stamp="1504118745110" version="1.0"/>
-</session>

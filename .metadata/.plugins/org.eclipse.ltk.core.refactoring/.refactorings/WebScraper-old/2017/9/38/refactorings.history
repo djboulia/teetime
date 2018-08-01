@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<session version="1.0">
-<refactoring comment="Move 3 packages to &apos;webscraper/src/main/java&apos;&#x0A;- Original project: &apos;WebScraper-old&apos;&#x0A;- Destination element: &apos;webscraper/src/main/java&apos;&#x0A;- Original elements:&#x0A;     WebScraper-old/src/webscraper.net.util&#x0A;     WebScraper-old/src/webscraper.net&#x0A;     WebScraper-old/src/webscraper.net.request&#x0A;- Update references to refactored element" description="Move packages" destination="=webscraper/src\/main\/java" element1="/src&lt;webscraper.net.util" element2="/src&lt;webscraper.net" element3="/src&lt;webscraper.net.request" flags="589830" fragments="3" id="org.eclipse.jdt.ui.move" policy="org.eclipse.jdt.ui.movePackages" stamp="1506006509898" version="1.0"/>
-</session>
