@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<qualifiedTypeNameHistroy>
+<fullyQualifiedTypeName name="java.lang.System"/>
+<fullyQualifiedTypeName name="teetime.Session"/>
+<fullyQualifiedTypeName name="teetime.TimeSlots"/>
+<fullyQualifiedTypeName name="teetime.CoursePreferences"/>
+<fullyQualifiedTypeName name="teetime.Golfers"/>
+<fullyQualifiedTypeName name="teetime.ajax.CompleteBooking"/>
+<fullyQualifiedTypeName name="teetime.actions.Booking"/>
+<fullyQualifiedTypeName name="teetime.ajax.LockTeeTime"/>
+<fullyQualifiedTypeName name="teetime.actions.Login"/>
+<fullyQualifiedTypeName name="teetime.actions.TeeTimes"/>
+<fullyQualifiedTypeName name="teetime.ajax.BeginBooking"/>
+<fullyQualifiedTypeName name="teetime.ajax.SearchMember"/>
+<fullyQualifiedTypeName name="webscraper.net.WebSession"/>
+<fullyQualifiedTypeName name="teetime.asp.Groups"/>
+<fullyQualifiedTypeName name="teetime.Golfer"/>
+<fullyQualifiedTypeName name="org.json.JSONException"/>
+<fullyQualifiedTypeName name="org.json.JSONObject"/>
+<fullyQualifiedTypeName name="org.json.JSONArray"/>
+</qualifiedTypeNameHistroy>

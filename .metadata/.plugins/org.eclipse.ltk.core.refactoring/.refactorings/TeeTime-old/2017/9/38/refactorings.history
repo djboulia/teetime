@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Move 3 packages to &apos;teetime/src/main/java&apos;&#x0A;- Original project: &apos;TeeTime-old&apos;&#x0A;- Destination element: &apos;teetime/src/main/java&apos;&#x0A;- Original elements:&#x0A;     TeeTime-old/src/teetime&#x0A;     TeeTime-old/src/teetime.actions&#x0A;     TeeTime-old/src/teetime.ajax&#x0A;- Update references to refactored element" description="Move packages" destination="=teetime/src\/main\/java" element1="/src&lt;teetime" element2="/src&lt;teetime.actions" element3="/src&lt;teetime.ajax" flags="589830" fragments="3" id="org.eclipse.jdt.ui.move" policy="org.eclipse.jdt.ui.movePackages" stamp="1506008512492" version="1.0"/>
+</session>
