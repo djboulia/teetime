@@ -251,51 +251,6 @@ public class CompleteBooking extends AjaxAction {
 		}
 		
 		return false;
-	}
-
-	//
-	// TODO: dead code - remove this after we verify the new implementation works.
-	//
-	private String getJson( Golfers golfers ) {
-
-		if (golfers.size() > 4) {
-			throw new IllegalArgumentException("Too many golfers!");
-		}
-		
-		String golferString = "[";
-		
-		int i = 0;
-		Iterator<Golfer> it = golfers.iterator();
-		
-		while (it.hasNext()) {
-			Golfer golfer = it.next();
-			golferString += "{\"ReservationId\":0,\"ReservationType\":0,\"FullName\":\"" + golfer.getName() + "\",\"Transport\"\n" + 
-					":\"0\",\"Caddy\":\"False\",\"Rentals\":\"\",\"MemberId\":" + golfer.getId() + "}";
-			i++;
-			
-			if (i<4) {
-				golferString += ",";
-			}
-		}
-		
-		while (i<4) {
-			golferString += "{\"ReservationId\":0,\"ReservationType\":-1,\"FullName\"\n" + 
-					":\"\",\"Transport\":\"2\",\"Caddy\":\"False\",\"Rentals\":\"\"}";
-			i++;
-
-			if (i<4) {
-				golferString += ",";
-			}
-		}
-		
-		golferString += "]";
-
-		String json = "{\"methodName\":\"ttBooking.ProceedBooking\",\"data\":{\"Mode\":\"booking\",\"Bookings\":[{\"BookingId\":0,\"OwnerId\"\n" + 
-				":593198,\"Reservations\":" + golferString + ",\"Holes\":18,\"allowed\":null,\"enabled\":true,\"Notes\":\"\"\n" + 
-				"}]}}";
-
-		return json;
-	}
-	
+	}	
 
 }

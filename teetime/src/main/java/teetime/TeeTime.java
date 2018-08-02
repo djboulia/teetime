@@ -165,7 +165,7 @@ public class TeeTime {
 	/**
 	 * Find member information for the currently logged in user
 	 * 
-	 * @return a S
+	 * @return a Golfer object
 	 */
 	public Golfer getMemberInfo() {
 		if (!loggedIn) {
@@ -219,7 +219,7 @@ public class TeeTime {
 	 * 
 	 * @param theTime the date and time you want to book
 	 * @param golfers the golfers to associate with this tee time
-	 * @return
+	 * @return the TimeSlot we reserved, or null if we couldn't reserve one
 	 */
 	public TimeSlot reserve(Date theTime, Golfers golfers) {
 		
