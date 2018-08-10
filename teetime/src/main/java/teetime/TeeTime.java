@@ -30,6 +30,7 @@ public class TeeTime {
 	private CoursePreferences prefs;
 	private String viewState;
 	private WebSession session;
+	private String errorMessage;
 
 	/**
 	 * 
@@ -65,6 +66,14 @@ public class TeeTime {
 	private WebSession getWebSession() {
 		return session;
 	}
+	
+	private void setErrorMessage(String str) {
+		this.errorMessage = str;
+	}
+
+	public String getErrorMessage() {
+		return this.errorMessage;
+	}
 
 	public boolean login(String userid, String password) {
 
@@ -91,8 +100,12 @@ public class TeeTime {
 	 * @return a list of Golfers that match the request
 	 */
 	public Golfers getMemberList(String name) {
+		
+		setErrorMessage(null);
+		
 		if (!loggedIn) {
 			System.err.println("getMemberList: Log in first!");
+			setErrorMessage("Not logged in");
 			return null;
 		}
 
@@ -115,7 +128,13 @@ public class TeeTime {
 			ajax.setReferer(pathGroups);
 			
 			if (ajax.send(name)) {
-				return ajax.getSearchResults();
+				Golfers result = ajax.getSearchResults();
+				
+				if (result == null) {
+					setErrorMessage( ajax.getErrorMessage());
+				}
+				
+				return result;
 			}
 		}
 		
@@ -130,8 +149,12 @@ public class TeeTime {
 	 * @return a list of TimeSlots that match the request
 	 */
 	public TimeSlots getMatchingTeeTimes(Date theTime) {
+		
+		setErrorMessage(null);
+
 		if (!loggedIn) {
 			System.err.println("getMatchingTeeTimes: Log in first!");
+			setErrorMessage("Not logged in");
 			return null;
 		}
 
@@ -168,8 +191,11 @@ public class TeeTime {
 	 * @return a Golfer object
 	 */
 	public Golfer getMemberInfo() {
+		setErrorMessage(null);
+
 		if (!loggedIn) {
 			System.err.println("getMemberInfo: Log in first!");
+			setErrorMessage("Not logged in");
 			return null;
 		}
 
@@ -222,6 +248,7 @@ public class TeeTime {
 	 * @return the TimeSlot we reserved, or null if we couldn't reserve one
 	 */
 	public TimeSlot reserve(Date theTime, Golfers golfers) {
+		setErrorMessage(null);
 		
 		TimeSlots list = getMatchingTeeTimes( theTime );
 		
@@ -235,11 +262,24 @@ public class TeeTime {
 				if (ts.isEmpty()) {
 					System.out.println("Empty TimeSlot " + ts);
 
+					// if we can't hold the time slot, it's likely because we're 
+					// competing with someone else for locking it, or the tee
+					// sheet isn't open yet.  We keep trying other possible time slots
+					// until we get one that we can lock down
+					
 					if (holdTimeSlot(ts)) {
 						System.out.println("Held time slot " + ts);
 						
 						if (completeBooking(golfers)) {
 							return ts;
+						} else {
+							
+							// if we can't complete the booking, we likely have 
+							// some error with the tee time.  possibilities such
+							// as the person already booked a tee time within
+							// 4 hours of this tee time, or an invalid member name
+							// if this happens, we don't keep trying
+							return null;
 						}
 					}
 				}
@@ -252,6 +292,7 @@ public class TeeTime {
 	private boolean holdTimeSlot(TimeSlot ts) {
 		if (!loggedIn) {
 			System.err.println("Session.getTimeSlot: Log in first!");
+			setErrorMessage("Not logged in");
 			return false;
 		}
 
@@ -287,8 +328,12 @@ public class TeeTime {
 				if (ajaxLock.send()) {
 					// book the tee time?
 					return true;
+				} else {
+					setErrorMessage(ajaxLock.getErrorMessage());
 				}
 			}
+		} else {
+			setErrorMessage(page.getErrorMessage());
 		}
 
 		return false;
@@ -318,6 +363,8 @@ public class TeeTime {
 		if (ajaxBooking.send(golfers)) {
 			// booked the tee time?
 			return true;
+		} else {
+			setErrorMessage(ajaxBooking.getErrorMessage());
 		}
 
 		return false;

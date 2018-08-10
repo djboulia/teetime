@@ -228,6 +228,7 @@ public class CompleteBooking extends AjaxAction {
 		// System.out.println( result );
 		if (!goodResult(result)) {
 			System.err.println("Did NOT complete booking! Result ->" + result);
+			
 			return false;
 		}
 

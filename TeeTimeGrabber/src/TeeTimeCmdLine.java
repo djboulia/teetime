@@ -61,17 +61,20 @@ public class TeeTimeCmdLine {
 	}
 
 	public static void doReservation(TeeTime session, Date theDate, Golfers golfers) {
-		boolean retry = true;
+		boolean retry = false;
+//		boolean retry = true;
 
 		do {
 			if (session.reserve(theDate, golfers) != null) {
 				System.out.println("Got the reservation!");
 				retry = false;
 			} else {
+				System.err.println(session.getErrorMessage());
+				
 				if (retry) {
-					System.out.println("No times available, retrying...");
+					System.err.println("No times available, retrying...");
 				} else {
-					System.out.println("No times available!");
+					System.err.println("No times available!");
 				}
 			}
 		} while (retry);
@@ -172,10 +175,10 @@ public class TeeTimeCmdLine {
 		if (session.login(userid, password)) {
 			System.out.println("Logged in as " + userid);
 			
-//			testReservation(session, coursePrefs, golfers);
-			testShowTeeTimes(session, coursePrefs, golfers);
-			testShowMembers(session, "boulia");
-			testMemberName(session);
+			testReservation(session, coursePrefs, golfers);
+//			testShowTeeTimes(session, coursePrefs, golfers);
+//			testShowMembers(session, "boulia");
+//			testMemberName(session);
 
 			session.logout();
 		}

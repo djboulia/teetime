@@ -11,6 +11,7 @@ public class AjaxAction {
 	private WebSession session;
 	private String path;
 	private String referer;
+	private String errorMessage;
 
 
 	public AjaxAction(WebSession session, String path) {
@@ -34,6 +35,15 @@ public class AjaxAction {
 		this.referer = referer;
 	}
 	
+	protected void setErrorMessage(String str) {
+		this.errorMessage = str;
+	}
+	
+	public String getErrorMessage() {
+		return this.errorMessage;
+	}
+
+	
 	protected String doPost(String json) {
 		
 		AjaxRequest ajax = getSession().createAjaxRequest(getPath());
@@ -44,7 +54,14 @@ public class AjaxAction {
 
 		boolean success = ajax.connect();
 		if (!success) {
-			System.err.println("Error making Ajax request to " + getPath());
+			// look for a 500 error code, and see if we can extract the error message
+			if (ajax.getResponseCode() == 500) {
+				String error = ajax.getHeaderField("jsonerror");
+				System.err.println("Error: " + error);
+				setErrorMessage(error);
+			} else {
+				System.err.println("Error code " + ajax.getResponseCode() + " making Ajax request to " + getPath() );
+			}
 			return null;
 		}
 

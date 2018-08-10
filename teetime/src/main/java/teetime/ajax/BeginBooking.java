@@ -59,6 +59,7 @@ public class BeginBooking extends AjaxAction {
 
 		if (!getResult(result)) {
 			System.err.println("Didn't obtain lock! Response was --> " + result);
+			
 			return false;
 		}
 

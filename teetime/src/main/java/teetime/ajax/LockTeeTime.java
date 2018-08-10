@@ -45,6 +45,7 @@ public class LockTeeTime extends AjaxAction {
 		// System.out.println( result );
 		if (!goodResult(result)) {
 			System.err.println("Didn't obtain lock. Result ->" + result);
+			
 			return false;
 		}
 

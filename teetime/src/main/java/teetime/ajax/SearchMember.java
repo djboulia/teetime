@@ -54,7 +54,14 @@ public class SearchMember extends AjaxAction {
 		
 		System.out.println("Response: " + result);
 		
-		return getResult(result);
+		if (!getResult(result)) {
+			
+			System.err.println("Member search failed. Result ->" + result);
+
+			return false;
+		}
+		
+		return true;
 	}
 
 	/**
