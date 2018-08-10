@@ -9,6 +9,7 @@ import java.net.HttpURLConnection;
 
 import java.util.Map;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.logging.Logger;
 
@@ -37,6 +38,7 @@ public class WebRequest {
 	private int responseCode = 200;
 	private String strReferer = "";
 	private String strHeaders = "";
+	private HashMap<String, String> mapHeaders;
 	private String strAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 	private boolean dumpHeaders = false;
 	private boolean dumpCookies = false;
@@ -199,6 +201,7 @@ public class WebRequest {
 	}
 
 	private void storeHeaderFields(HttpURLConnection conn) {
+		mapHeaders = new HashMap<String, String>();
 		strHeaders = "";
 
 		Map fields = conn.getHeaderFields();
@@ -215,6 +218,7 @@ public class WebRequest {
 				 */
 				if (key != null) {
 					strHeaders = strHeaders + key + ": " + hdrItem + "\n";
+					mapHeaders.put(key,  hdrItem);
 				}
 			}
 		}
@@ -224,6 +228,10 @@ public class WebRequest {
 
 	public String getStoredHeaders() {
 		return strHeaders;
+	}
+
+	public String getHeaderField(String key) {
+		return mapHeaders.get(key);
 	}
 
 	protected void setHeaderFields(HttpURLConnection conn) {
